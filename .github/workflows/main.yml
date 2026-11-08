@@ -5,13 +5,11 @@ on:
     branches:
       - main # Altere para 'master' se a sua branch principal for master
 
-# Permissões necessárias para publicar no GitHub Pages
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# Permite apenas uma implantação por vez
 concurrency:
   group: "pages"
   cancel-in-progress: true
@@ -25,7 +23,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
-          fetch-depth: 0 # Baixa todo o histórico para garantir a resolução de submódulos aninhados
+          fetch-depth: 0
 
       - name: Setup Emscripten SDK
         uses: mymindstorm/setup-emsdk@v13
@@ -35,15 +33,17 @@ jobs:
 
       - name: Initialize and Update Submodules Recursively
         run: |
+          # Inicializa apenas os submódulos reais oficiais do repositório
           git submodule update --init --recursive
 
       - name: Build WASM/JS Variants
         run: |
           chmod +x ./build_wasm.sh
-          # Limpa resíduos de compilações anteriores para evitar erros no CMake
+          
+          # Remove completamente qualquer pasta de build anterior que possa corromper o FetchContent do CMake
           rm -rf build_cmake/build
           
-          # Compila a variante padrão de 1024 MB (remova '1024' se quiser compilar todas)
+          # Compila a variante de 1024 MB (ou remova '1024' para compilar todas)
           ./build_wasm.sh 1024
 
       - name: Setup Node.js
