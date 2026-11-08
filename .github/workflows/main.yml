@@ -22,8 +22,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false # Desativado aqui para evitar que o checkout processe pastas temporárias incorretamente
           fetch-depth: 0
+
+      - name: Clean build artifacts / cache directories
+        run: |
+          # Limpa preventivamente qualquer resíduo anterior
+          rm -rf build_cmake/build
+
+      - name: Initialize and Update Submodules Recursively
+        run: |
+          git submodule sync --recursive
+          git submodule update --init --recursive --force
 
       - name: Setup Emscripten SDK
         uses: mymindstorm/setup-emsdk@v13
@@ -31,19 +41,9 @@ jobs:
           version: 'latest'
           actions-cache-folder: 'emsdk-cache'
 
-      - name: Initialize and Update Submodules Recursively
-        run: |
-          # Inicializa apenas os submódulos reais oficiais do repositório
-          git submodule update --init --recursive
-
       - name: Build WASM/JS Variants
         run: |
           chmod +x ./build_wasm.sh
-          
-          # Remove completamente qualquer pasta de build anterior que possa corromper o FetchContent do CMake
-          rm -rf build_cmake/build
-          
-          # Compila a variante de 1024 MB (ou remova '1024' para compilar todas)
           ./build_wasm.sh 1024
 
       - name: Setup Node.js
