@@ -1,4 +1,31 @@
-- name: Clean Git Submodule Cache and Artifacts
+name: Deploy RPCS3-WASM to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main # Altere para 'master' se a sua branch principal for master
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: false # Desativado aqui para evitar que o checkout processe pastas temporárias incorretamente
+          fetch-depth: 0
+
+        - name: Clean Git Submodule Cache and Artifacts
         run: |
           # Remove resíduos de build antigos
           rm -rf build_cmake/build
@@ -12,3 +39,39 @@
           git submodule sync
           # Atualiza apenas os submódulos recursivos que estão dentro de 3rdparty, evitando pastas de build
           git submodule update --init --recursive --force
+
+      - name: Setup Emscripten SDK
+        uses: mymindstorm/setup-emsdk@v13
+        with:
+          version: 'latest'
+          actions-cache-folder: 'emsdk-cache'
+
+      - name: Build WASM/JS Variants
+        run: |
+          chmod +x ./build_wasm.sh
+          ./build_wasm.sh 1024
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: js/rpcs3_browser/package-lock.json
+
+      - name: Build Front-End React
+        run: |
+          cd js/rpcs3_browser
+          npm ci
+          npm run build
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact for GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'js/rpcs3_browser/build'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
