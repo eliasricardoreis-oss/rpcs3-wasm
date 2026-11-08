@@ -1,0 +1,67 @@
+name: Deploy RPCS3-WASM to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main # Altere para 'master' se a sua branch principal for master
+
+# Permissões necessárias para publicar no GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Permite apenas uma implantação por vez
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive # Baixa submódulos se o repositório utilizar algum
+
+      - name: Setup Emscripten SDK
+        uses: mymindstorm/setup-emsdk@v13
+        with:
+          version: 'latest'
+          actions-cache-folder: 'emsdk-cache'
+
+      - name: Build WASM/JS Variants
+        run: |
+          # Garante permissão de execução no script
+          chmod +x ./build_wasm.sh
+          
+          # Compila a variante padrão 1024 MB (ou rode sem argumentos para compilar todas: ./build_wasm.sh)
+          ./build_wasm.sh 1024
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: js/rpcs3_browser/package-lock.json
+
+      - name: Build Front-End React
+        run: |
+          cd js/rpcs3_browser
+          npm ci
+          npm run build
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact for GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # Caminho da pasta de build do React
+          path: 'js/rpcs3_browser/build'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
