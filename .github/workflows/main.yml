@@ -25,7 +25,7 @@ jobs:
           submodules: false # Desativado aqui para evitar que o checkout processe pastas temporárias incorretamente
           fetch-depth: 0
 
-        - name: Clean Git Submodule Cache and Artifacts
+      - name: Clean Git Submodule Cache and Artifacts
         run: |
           # Remove resíduos de build antigos
           rm -rf build_cmake/build
